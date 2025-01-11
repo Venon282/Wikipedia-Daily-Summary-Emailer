@@ -185,10 +185,10 @@ function translateText(text, target_lang) {
 }
 
 // Set the script to run daily using a trigger
-function createDailyTrigger() {
+function createDailyTrigger(time=6) {
   ScriptApp.newTrigger('sendDailySummary')
     .timeBased()
     .everyDays(1)
-    .atHour(6) // Adjust to the desired time
+    .atHour(time) 
     .create();
 }
