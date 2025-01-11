@@ -1,4 +1,4 @@
-=const GROQCLOUD_API_KEY  = 'your_groqcloud_api_key'
+const GROQCLOUD_API_KEY  = 'your_groqcloud_api_key'
 const DEEPL_API_KEY = 'your_deepl_api_key'
 const DEFAULT_LANGUAGE = 'fr'
 
