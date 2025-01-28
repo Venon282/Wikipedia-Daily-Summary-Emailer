@@ -28,8 +28,8 @@ function sendDailySummary() {
     return;
   }
   
-  const prompt = 'Fournis un résumé clair, concis et informatif de l\'article suivant en français. Formate le texte en HTML. Exclue les références, citations, sections inutiles, et données non pertinentes. Mets en avant les informations principales et les points clés de manière structurée et facile à lire.'
-  const summary = generateGroqCloudSummary(content, prompt,'llama-3.3-70b-versatile',1.2, 400);
+  const prompt = 'Fournis un résumé clair, simple et informatif de l\'article suivant en français, tout en expliquant les termes ou concepts complexes pour les rendre compréhensibles. Formate le texte en HTML. Ne conserve que les informations importantes et les points essentiels, tout en excluant les références, citations, données inutiles ou hors sujet. Si des informations contextuelles ou des explications supplémentaires sont nécessaires pour mieux comprendre, inclue-les directement dans le résumé de manière concise.'
+  const summary = generateGroqCloudSummary(content, prompt,'llama-3.3-70b-versatile',1.3, 450);
   
   if (!summary) {
     Logger.log('Failed to generate summary!');
