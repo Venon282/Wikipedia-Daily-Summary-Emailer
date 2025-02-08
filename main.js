@@ -1,6 +1,10 @@
 const GROQCLOUD_API_KEY  = 'your_groqcloud_api_key'
 const DEEPL_API_KEY = 'your_deepl_api_key'
 const DEFAULT_LANGUAGE = 'fr'
+const THEMES = [
+    "Architecture", "Artisanat", "Dessin", "Cinéma", "Design", "Littérature", "Musique", "Photographie", "Sculpture", "Arts du spectacle", "Artiste", "Histoire de l'art", "Institution artistique", "Œuvre d'art", "Technique artistique", "Astronomie", "Biologie", "Chimie", "Mathématiques", "Physique", "Sciences de la Terre", "Anthropologie", "Archéologie", "Économie", "Géographie", "Histoire", "Linguistique", "Information", "Philosophie", "Psychologie", "Sociologie", "Chronologie", "Date", "Calendrier", "Siècle", "Année", "Événement", "Lieu", "Territoire", "Ville", "Continent", "Pays", "Alimentation", "Croyance", "Culture", "Divertissement", "Droit", "Éducation", "Idéologie", "Langue", "Médias", "Mode", "Organisation", "Groupe social", "Politique", "Santé", "Sexualité", "Sport", "Tourisme", "Travail", "Urbanisme", "Aéronautique", "Agriculture", "Astronautique", "Électricité", "Électronique", "Énergie", "Industrie", "Ingénierie", "Informatique", "Mécanique", "Médecine", "Métallurgie", "Plasturgie", "Robotique", "Sylviculture", "Télécommunications", "Transports", "Par période historique", "Par métier", "Par secteur d'activité", "Par nationalité"
+  ]
+const MAX_TRY = 15
 
 function sendDailySummary() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('DailySummaryRecipients')
@@ -20,15 +24,32 @@ function sendDailySummary() {
     return;
   }
 
-  const wikipedia_url = 'https://fr.wikipedia.org/wiki/Sp%C3%A9cial:Page_au_hasard';
-  const { title, content, url, image_url } = fetchRandomWikipediaArticle(wikipedia_url);
+  // Get article
+  //const wikipedia_url = 'https://fr.wikipedia.org/wiki/Sp%C3%A9cial:Page_au_hasard';
+  const theme = THEMES[Math.floor(Math.random() * THEMES.length)]
+  let wikipedia_url = null
+  i = 0
+  while(wikipedia_url === null){
+      if(i >= MAX_TRY)
+          return
+      wikipedia_url = getRandomArticleFromTheme(theme)
+      i++
+  }
+  Logger.log('URL: '+wikipedia_url)
+
+
+  const { title, content, image_url } = fetchRandomWikipediaArticle(wikipedia_url);
   
   if (!content) {
     Logger.log('Failed to fetch Wikipedia content!');
     return;
   }
   
+  // const prompt = 'Fournis un résumé clair, concis et informatif de l\'article suivant en français. Formate le texte en HTML. Exclue les références, citations, sections inutiles, et données non pertinentes. Mets en avant les informations principales et les points clés de manière structurée et facile à lire.'
+
   const prompt = 'Fournis un résumé clair, simple et informatif de l\'article suivant en français, tout en expliquant les termes ou concepts complexes pour les rendre compréhensibles. Formate le texte en HTML. Ne conserve que les informations importantes et les points essentiels, tout en excluant les références, citations, données inutiles ou hors sujet. Si des informations contextuelles ou des explications supplémentaires sont nécessaires pour mieux comprendre, inclue-les directement dans le résumé de manière concise.'
+
+
   const summary = generateGroqCloudSummary(content, prompt,'llama-3.3-70b-versatile',1.3, 450);
   
   if (!summary) {
@@ -41,11 +62,11 @@ function sendDailySummary() {
       'object':`Résumé de l’article du jour: ${title}`,
       'message':`
           <p>Bonjour,</p>
-          <p>Voici un résumé de l'article aléatoire du jour :</p>
-          <p><strong>Titre : ${title}</strong></p>
+          <p>Le thème du jour est : <strong style="font-size: 1.1em;">${theme}</strong></p>
+          <p>Titre : <strong style="font-size: 1.1em;">${title}</strong></p>
           ${image_url ? `<p><img src="${image_url}" alt="${title}" style="max-width:100%; height:auto;"></p>` : ''}
           <p>Résumé : ${summary}</p>
-          <p>Lien vers l'article complet : <a href="${url}">${url}</a></p>
+          <p>Lien vers l'article complet : <a href="${wikipedia_url}">${wikipedia_url}</a></p>
           <p>Cordialement,</p>
           <p>Votre service de résumé quotidien.</p>
     `
@@ -74,12 +95,7 @@ function sendDailySummary() {
 
 function fetchRandomWikipediaArticle(url) {
   try {
-    let response = UrlFetchApp.fetch(url, { followRedirects: false })
-
-    const headers = response.getHeaders();
-    const redirected_url = headers['Location'];
-
-    response = UrlFetchApp.fetch(redirected_url);
+    let response = UrlFetchApp.fetch(url)
     
     let html = response.getContentText();
 
@@ -87,7 +103,6 @@ function fetchRandomWikipediaArticle(url) {
     const title_match = html.match(/<title>(.*?)<\/title>/);
     const title = title_match ? title_match[1].replace(' — Wikipédia', '').trim() : 'Article sans titre';
   
-    
     // Extract content (first few paragraphs)
     const content_match = html.match(/<main[\s\S]*?>([\s\S]*?)<\/main>/)
 
@@ -99,11 +114,11 @@ function fetchRandomWikipediaArticle(url) {
     // Get and clean the content
     let content = content_match[1]
     content = content.replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ')
-
+    
     // Get article image
     const image_url = fetchWikipediaImage(title)
     
-    return { title:title, content:content, url: redirected_url, image_url: image_url};
+    return { title:title, content:content, image_url: image_url};
   } catch (e) {
     Logger.log('Error fetching Wikipedia article: ' + e.message);
     return { title: null, content: null, url: null, image_url:null};
@@ -185,10 +200,10 @@ function translateText(text, target_lang) {
 }
 
 // Set the script to run daily using a trigger
-function createDailyTrigger(time=6) {
+function createDailyTrigger() {
   ScriptApp.newTrigger('sendDailySummary')
     .timeBased()
     .everyDays(1)
-    .atHour(time) 
+    .atHour(6) // Adjust to the desired time
     .create();
 }
